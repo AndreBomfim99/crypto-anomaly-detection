@@ -1,0 +1,56 @@
+# Scala / SBT
+target/
+*.class
+*.log
+.cache
+.history
+.lib/
+dist/*
+lib_managed/
+src_managed/
+project/boot/
+project/plugins/project/
+.scala_dependencies
+.worksheet
+
+# SBT specific
+.bsp/
+metals.sbt
+.bloop/
+.metals/
+project/metals.sbt
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.DS_Store
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+
+# Docker
+*.log
+localstack-data/
+
+# Logs e dados temporários
+logs/
+*.log
+data/
+tmp/
+
+# Secrets (NUNCA commitar)
+*.pem
+*.key
+.env
+secrets.yaml
+
+# OS
+.DS_Store
+Thumbs.db
