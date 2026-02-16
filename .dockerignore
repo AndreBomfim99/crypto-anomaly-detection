@@ -1,0 +1,33 @@
+# Git
+.git/
+.gitignore
+
+# SBT/Scala
+target/
+project/target/
+project/project/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+logs/*.log
+
+# LocalStack data
+docker/localstack-data/
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+
+# Tests
+tests/
+
+# Documentation
+docs/
+documentacao/
+README.md
+LICENSE

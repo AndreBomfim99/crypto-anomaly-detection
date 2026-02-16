@@ -13,6 +13,45 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
       - crypto-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ingestion:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ingestion
+    container_name: crypto-ingestion
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      - AWS_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
+    networks:
+      - crypto-network
+    volumes:
+      - ../logs:/app/logs
+
+  processor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.processor
+    container_name: crypto-processor
+    depends_on:
+      localstack:
+        condition: service_healthy
+      ingestion:
+        condition: service_completed_successfully
+    environment:
+      - AWS_ENDPOINT=http://localstack:4566
+      - AWS_REGION=us-east-1
+    networks:
+      - crypto-network
+    volumes:
+      - ../logs:/app/logs
 
 networks:
   crypto-network:
