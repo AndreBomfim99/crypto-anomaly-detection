@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+    
+    - name: Build assembly JAR
+      run: sbt assembly
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          target/scala-2.12/*.jar
+          README.md
+        body: |
+          ## Crypto Anomaly Detection System
+          
+          ### Release Notes
+          
+          This release includes:
+          - Data ingestion from CoinGecko API
+          - Spark-based anomaly detection
+          - SNS alerting system
+          - LocalStack integration
+          - Full Terraform infrastructure
+          
+          ### Docker Images
+          
+          Pull the Docker images:
+```bash
+          docker pull crypto-ingestion:${{ github.ref_name }}
+          docker pull crypto-processor:${{ github.ref_name }}
+```
+          
+          ### Quick Start
+          
+          See README.md for detailed instructions.
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

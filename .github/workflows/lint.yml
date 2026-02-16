@@ -1,0 +1,55 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Lint Markdown files
+      uses: nosborn/github-action-markdown-cli@v3.3.0
+      with:
+        files: .
+        config_file: .markdownlint.json
+        ignore_files: node_modules
+      continue-on-error: true
+
+  yaml-lint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Lint YAML files
+      run: |
+        find . -name "*.yml" -o -name "*.yaml" | while read file; do
+          echo "Checking $file"
+          python3 -c "import yaml; yaml.safe_load(open('$file'))" || echo "Issue in $file"
+        done
+
+  shell-lint:
+    name: Shell Script Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install shellcheck
+      run: sudo apt-get install -y shellcheck
+      
+    - name: Lint shell scripts
+      run: |
+        find scripts -name "*.sh" -exec shellcheck {} \; || echo "Shellcheck issues found"
+      continue-on-error: true

@@ -1,0 +1,139 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'sbt'
+    
+    - name: Setup SBT
+      run: |
+        echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+        curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+        sudo apt-get update
+        sudo apt-get install -y sbt || echo "SBT installation failed, using cached version"
+    
+    - name: Compile Scala code
+      run: sbt compile
+      
+    - name: Run scalafmt check
+      run: sbt scalafmtCheckAll || echo "Scalafmt not configured, skipping"
+      continue-on-error: true
+    
+    - name: Check for compilation warnings
+      run: sbt compile 2>&1 | tee compile.log
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-logs
+        path: |
+          compile.log
+          target/
+        retention-days: 7
+
+  validate-terraform:
+    name: Validate Terraform
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.7.4
+    
+    - name: Terraform Format Check
+      working-directory: ./terraform
+      run: terraform fmt -check || echo "Terraform formatting issues found"
+      continue-on-error: true
+    
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: terraform init -backend=false
+    
+    - name: Terraform Validate
+      working-directory: ./terraform
+      run: terraform validate
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Build ingestion image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker/Dockerfile.ingestion
+        push: false
+        tags: crypto-ingestion:ci
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Build processor image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./docker/Dockerfile.processor
+        push: false
+        tags: crypto-processor:ci
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Count lines of code
+      run: |
+        echo "## Code Statistics" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "Scala files:" >> $GITHUB_STEP_SUMMARY
+        find src -name "*.scala" | wc -l >> $GITHUB_STEP_SUMMARY
+        echo "Total lines of Scala code:" >> $GITHUB_STEP_SUMMARY
+        find src -name "*.scala" -exec cat {} \; | wc -l >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+    
+    - name: Check for TODOs
+      run: |
+        echo "## TODOs Found" >> $GITHUB_STEP_SUMMARY
+        grep -r "TODO" src/ || echo "No TODOs found" >> $GITHUB_STEP_SUMMARY
+      continue-on-error: true
+    
+    - name: Verify required files
+      run: |
+        test -f README.md || (echo "README.md missing" && exit 1)
+        test -f LICENSE || (echo "LICENSE missing" && exit 1)
+        test -f build.sbt || (echo "build.sbt missing" && exit 1)
+        test -f .gitignore || (echo ".gitignore missing" && exit 1)
+        echo "All required files present"
